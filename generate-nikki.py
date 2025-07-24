@@ -14,6 +14,18 @@ def simple_markdown_to_html(markdown_text):
     html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
     html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
     html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+    html = re.sub(r'^#### (.+)$', r'<h4>\1</h4>', html, flags=re.MULTILINE)
+    html = re.sub(r'^##### (.+)$', r'<h5>\1</h5>', html, flags=re.MULTILINE)
+    html = re.sub(r'^###### (.+)$', r'<h6>\1</h6>', html, flags=re.MULTILINE)
+    
+    # 強調変換（**bold** → <strong>bold</strong>）
+    html = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', html)
+    
+    # 斜体変換（*italic* → <em>italic</em>）
+    html = re.sub(r'\*([^*]+)\*', r'<em>\1</em>', html)
+    
+    # インラインコード変換（`code` → <code>code</code>）
+    html = re.sub(r'`([^`]+)`', r'<code>\1</code>', html)
     
     # リンク変換 [テキスト](URL)
     html = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2" target="_blank">\1</a>', html)
@@ -25,8 +37,34 @@ def simple_markdown_to_html(markdown_text):
     for para in paragraphs:
         para = para.strip()
         if para:
+            # コードブロック処理（```で囲まれたもの）
+            if para.startswith('```') and para.endswith('```'):
+                # コードブロックの言語指定を取得
+                lines = para.split('\n')
+                if len(lines) > 2:
+                    language = lines[0][3:] if len(lines[0]) > 3 else ''
+                    code_content = '\n'.join(lines[1:-1])
+                    if language:
+                        para = f'<pre><code class="language-{language}">{code_content}</code></pre>'
+                    else:
+                        para = f'<pre><code>{code_content}</code></pre>'
+                else:
+                    para = f'<pre><code>{para[3:-3]}</code></pre>'
+            # ブロッククォート処理（> で始まる行）
+            elif '> ' in para or para.startswith('>'):
+                lines = para.split('\n')
+                quote_lines = []
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('> '):
+                        quote_lines.append(line[2:])
+                    elif line.startswith('>'):
+                        quote_lines.append(line[1:])
+                    else:
+                        quote_lines.append(line)
+                para = f'<blockquote><p>{"<br>".join(quote_lines)}</p></blockquote>'
             # 見出しでない場合はpタグで囲む
-            if not (para.startswith('<h') and para.endswith('>')):
+            elif not (para.startswith('<h') and para.endswith('>')):
                 # リスト処理
                 if '- ' in para:
                     lines = para.split('\n')
@@ -224,6 +262,14 @@ def main():
             font-weight: 700;
         }}
         
+        h4, h5, h6 {{
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #444;
+            font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+            font-weight: 700;
+        }}
+        
         p {{
             line-height: 2;
             font-size: 1.1em;
@@ -231,6 +277,16 @@ def main():
             margin-bottom: 1.5em;
             text-align: justify;
             text-indent: 1em;
+        }}
+        
+        strong {{
+            font-weight: 900;
+            color: #2c2c2c;
+        }}
+        
+        em {{
+            font-style: italic;
+            color: #333;
         }}
         
         ul, ol {{
@@ -248,6 +304,8 @@ def main():
             padding: 0.2em 0.4em;
             border-radius: 3px;
             font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #d63384;
         }}
         
         pre {{
